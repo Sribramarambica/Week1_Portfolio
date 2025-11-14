@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Advanced E-commerce Frontend — Single File</title>
+
+  <!-- =========================
+       CSS: Grid, Flexbox, Animations
+       ========================= -->
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#94a3b8;
+      --accent:#06b6d4;
+      --glass: rgba(255,255,255,0.03);
+      --maxw:1200px;
+      --radius:12px;
+      --gap:18px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: #e6eef8;
+    }
+
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071023 0%, #071130 60%);}
+
+    .app {
+      max-width: var(--maxw);
+      margin: 28px auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 340px; /* main + sidebar/cart */
+      gap: var(--gap);
+    }
+
+    /* Responsive: single column on small screens */
+    @media (max-width: 900px){
+      .app { grid-template-columns: 1fr; padding: 12px; }
+      .sidebar { order: -1; } /* put cart on top for mobile */
+    }
+
+    /* Header using Flexbox */
+    header {
+      grid-column: 1 / -1;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 12px 16px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+      backdrop-filter: blur(6px);
+    }
+
+    header .brand {
+      display:flex; gap:12px; align-items:center;
+    }
+    .logo {
+      width:48px; height:48px; border-radius:10px; display:grid; place-items:center;
+      background:linear-gradient(135deg,var(--accent), #3b82f6);
+      box-shadow: 0 4px 18px rgba(6,182,212,0.12);
+      font-weight:700;
+    }
+    nav { display:flex; gap:10px; align-items:center; }
+    .nav-btn {
+      padding:8px 12px; border-radius:999px; cursor:pointer; font-size:14px;
+      transition: transform .18s ease, background .18s;
+      background:transparent; border:1px solid rgba(255,255,255,0.03);
+    }
+    .nav-btn:hover { transform: translateY(-3px); background: rgba(255,255,255,0.03); }
+
+    /* Animated search input */
+    .search {
+      display:flex; gap:8px; align-items:center; padding:6px 8px; background:var(--glass);
+      border-radius:999px; border:1px solid rgba(255,255,255,0.02);
+    }
+    .search input{ background:transparent; border:0; outline:0; color:var(--muted); width:200px; }
+
+    /* Product grid (CSS Grid mastery) */
+    .products {
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      min-height: 400px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: 10px;
+      padding: 12px;
+      overflow: hidden;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      transition: transform .22s cubic-bezier(.2,.9,.2,1), box-shadow .22s;
+      border: 1px solid rgba(255,255,255,0.02);
+    }
+    .card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(2,6,23,0.6); }
+
+    .thumb {
+      height:140px; border-radius:8px; background:linear-gradient(180deg,#07112b,#0b1830);
+      display:grid; place-items:center; overflow:hidden;
+      position:relative;
+    }
+    .thumb img { width:100%; height:100%; object-fit:cover; display:block; transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+    .card:hover .thumb img { transform: scale(1.06) rotate(-1deg); }
+
+    .title { font-weight:600; font-size:15px; color:#e8f7ff; }
+    .price-line { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .price { font-weight:700; color:var(--accent); }
+    .muted { color:var(--muted); font-size:13px; }
+
+    .controls { display:flex; gap:8px; margin-top:auto; }
+    .btn {
+      padding:8px 10px; border-radius:10px; background:transparent; border:1px solid rgba(255,255,255,0.04);
+      cursor:pointer; transition: transform .12s, box-shadow .12s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: linear-gradient(90deg,var(--accent),#3b82f6); color:#021024; border:0; box-shadow: 0 8px 18px rgba(6,182,212,0.12); }
+
+    /* Sidebar / Cart (flexbox stacked) */
+    .sidebar {
+      padding:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      border-radius: var(--radius);
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+      align-self:start;
+    }
+    .cart-list { display:flex; flex-direction:column; gap:12px; max-height:420px; overflow:auto; padding-right:6px; }
+    .cart-item { display:flex; gap:10px; align-items:center; background: rgba(255,255,255,0.01); padding:8px; border-radius:10px; }
+    .cart-item img { width:60px; height:48px; object-fit:cover; border-radius:6px; }
+    .qty { display:flex; gap:6px; align-items:center; margin-left:auto; }
+    .small { font-size:13px; color:var(--muted); }
+
+    /* Animated nav underline */
+    .nav-underline { height:3px; width:40px; background:linear-gradient(90deg,var(--accent),#3b82f6); border-radius:999px; animation: slide 3s ease-in-out infinite; opacity:0.9; }
+    @keyframes slide { 0%{transform:translateX(-20px)}50%{transform:translateX(20px)}100%{transform:translateX(-20px)} }
+
+    /* subtle add-to-cart pulse */
+    .pulse {
+      animation: pulse .5s ease-out;
+      box-shadow: 0 8px 26px rgba(3,166,166,0.12);
+    }
+    @keyframes pulse { from { transform: scale(.98);} to { transform: scale(1);} }
+
+    footer { grid-column:1/-1; color:var(--muted); font-size:13px; text-align:center; padding:10px 0; }
+  </style>
+</head>
+<body>
+
+  <div class="app" id="app">
+    <!-- Header (Flexbox) -->
+    <header>
+      <div class="brand">
+        <div class="logo">AE</div>
+        <div>
+          <div style="font-weight:700">Advanced E-commerce</div>
+          <div class="small">Week 5 demo • Grid • Flex • ES6 • Animations</div>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-btn">Home</div>
+        <div class="nav-btn">Collections</div>
+        <div class="nav-btn">About</div>
+        <div class="nav-underline" title="animated accent"></div>
+      </nav>
+
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div class="search" title="search (filters)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35" stroke="#cdeaf6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10.5" cy="10.5" r="5.5" stroke="#cdeaf6" stroke-width="1.6"/></svg>
+          <input id="q" placeholder="Search (try 'shirt')" />
+        </div>
+        <div class="search" style="padding:6px 10px;"><span class="small">Sort</span>
+          <select id="sort">
+            <option value="relevance">Relevance</option>
+            <option value="price-asc">Price ↑</option>
+            <option value="price-desc">Price ↓</option>
+          </select>
+        </div>
+        <div id="cartToggle" class="nav-btn" title="Open cart">Cart (<span id="cartCount">0</span>)</div>
+      </div>
+    </header>
+
+    <!-- Main content: Products -->
+    <main class="products">
+      <h2 style="margin:6px 0 12px 0">Products</h2>
+      <div class="grid" id="productsGrid" aria-live="polite">
+        <!-- JS injects product cards here -->
+      </div>
+    </main>
+
+    <!-- Sidebar cart -->
+    <aside class="sidebar" id="sidebar">
+      <h3 style="margin-top:0">Your Cart</h3>
+      <div class="cart-list" id="cartList">
+        <div class="small" id="emptyCartNote">Cart is empty — add items to get started.</div>
+      </div>
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0" />
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="small">Total</div>
+        <div style="font-weight:700" id="cartTotal">₹0</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button id="checkoutBtn" class="btn primary" style="flex:1">Checkout</button>
+        <button id="clearBtn" class="btn" title="Empty cart">Clear</button>
+      </div>
+    </aside>
+
+    <footer>Demo app — not connected to payments. Built for Week 5: Advanced Frontend.</footer>
+  </div>
+
+  <!-- =========================
+       JavaScript: ES6+ features, modular-ish, async/await, localStorage cart
+       ========================= -->
+  <script>
+  (function App(){
+    // ---------- Mock product data (could be fetched via fetch/REST) ----------
+    const PRODUCTS = [
+      { id: 'p1', title: 'Classic Tee', price: 499, img: 'https://images.unsplash.com/photo-1602810310373-3d4045b7884f?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=1' , tag:'shirt'},
+      { id: 'p2', title: 'Denim Jacket', price: 2499, img: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=2' , tag:'jacket'},
+      { id: 'p3', title: 'Running Shoes', price: 2999, img: 'https://images.unsplash.com/photo-1515548211243-4d13bcd3ede1?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=3' , tag:'shoes'},
+      { id: 'p4', title: 'Casual Shirt', price: 799, img: 'https://images.unsplash.com/photo-1520975913620-3a551b1b8b3b?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=4' , tag:'shirt'},
+      { id: 'p5', title: 'Leather Wallet', price: 699, img: 'https://images.unsplash.com/photo-1602810310373-3d4045b7884f?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=5' , tag:'accessory'},
+      { id: 'p6', title: 'Beanie', price: 299, img: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=6' , tag:'accessory'},
+      { id: 'p7', title: 'Sunglasses', price: 1299, img: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=7' , tag:'accessory'},
+      { id: 'p8', title: 'Cargo Pants', price: 1199, img: 'https://images.unsplash.com/photo-1600180758892-4c8b2ee7b368?q=80&w=900&auto=format&fit=crop&ixlib=rb-4.0.3&s=8' , tag:'pants'},
+    ];
+
+    // ---------- Utilities (ES6 arrow functions, template literals) ----------
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    const formatPrice = p => `₹${p.toLocaleString('en-IN')}`;
+
+    // ---------- Simple "API" that uses async/await to simulate network ----------
+    const Api = {
+      async fetchProducts(){
+        // simulate network delay
+        await new Promise(r => setTimeout(r, 220));
+        // return copy to simulate remote fetch
+        return PRODUCTS.map(p => ({...p}));
+      }
+    };
+
+    // ---------- Cart class (ES6 class) ----------
+    class Cart {
+      constructor(key = 'ae_cart_v1') {
+        this.key = key;
+        this.items = this._load();
+      }
+      _load(){
+        try{
+          const raw = localStorage.getItem(this.key);
+          return raw ? JSON.parse(raw) : {};
+        }catch(e){ return {}; }
+      }
+      _save(){
+        localStorage.setItem(this.key, JSON.stringify(this.items));
+      }
+      add(productId, productData, qty = 1){
+        const existing = this.items[productId] || {...productData, qty:0};
+        existing.qty += qty;
+        this.items[productId] = existing;
+        this._save();
+      }
+      updateQty(productId, qty){
+        if(!this.items[productId]) return;
+        if(qty <= 0){ delete this.items[productId]; } else { this.items[productId].qty = qty; }
+        this._save();
+      }
+      clear(){ this.items = {}; this._save(); }
+      getCount(){ return Object.values(this.items).reduce((a,b)=>a+b.qty,0); }
+      getTotal(){ return Object.values(this.items).reduce((a,b)=>a + b.qty * b.price, 0); }
+      all(){ return Object.values(this.items); }
+    }
+
+    // ---------- App state ----------
+    const state = {
+      products: [],
+      cart: new Cart(),
+      query: '',
+      sort: 'relevance'
+    };
+
+    // ---------- Rendering functions (minimize DOM operations) ----------
+    const productsGrid = $('#productsGrid');
+    const cartList = $('#cartList');
+    const cartTotal = $('#cartTotal');
+    const cartCount = $('#cartCount');
+    const emptyNote = $('#emptyCartNote');
+
+    function createProductCard(p){
+      const el = document.createElement('article');
+      el.className = 'card';
+      el.innerHTML = `
+        <div class="thumb" aria-hidden="true">
+          <img loading="lazy" src="${p.img}" alt="${p.title}">
+        </div>
+        <div class="title">${p.title}</div>
+        <div class="muted">${p.tag}</div>
+        <div class="price-line">
+          <div class="price">${formatPrice(p.price)}</div>
+          <div class="muted">Free returns • 7 days</div>
+        </div>
+        <div class="controls">
+          <button class="btn add" data-id="${p.id}">Add to Cart</button>
+          <button class="btn" data-id="${p.id}" style="margin-left:auto">View</button>
+        </div>
+      `;
+      // event delegation handled outside
+      return el;
+    }
+
+    function renderProducts(list){
+      productsGrid.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      for(const p of list){
+        frag.appendChild(createProductCard(p));
+      }
+      productsGrid.appendChild(frag);
+    }
+
+    // render cart items
+    function renderCart(){
+      const items = state.cart.all();
+      cartList.innerHTML = '';
+      if(items.length === 0){
+        cartList.appendChild(emptyNote);
+        emptyNote.style.display = 'block';
+      } else {
+        emptyNote.style.display = 'none';
+        items.forEach(it => {
+          const node = document.createElement('div');
+          node.className = 'cart-item';
+          node.innerHTML = `
+            <img src="${it.img}" alt="${it.title}" loading="lazy">
+            <div style="flex:1">
+              <div style="font-weight:600">${it.title}</div>
+              <div class="small">${formatPrice(it.price)}</div>
+            </div>
+            <div class="qty">
+              <button class="btn dec" data-id="${it.id}">-</button>
+              <div style="min-width:36px;text-align:center">${it.qty}</div>
+              <button class="btn inc" data-id="${it.id}">+</button>
+            </div>
+          `;
+          cartList.appendChild(node);
+        });
+      }
+      cartTotal.textContent = formatPrice(state.cart.getTotal());
+      cartCount.textContent = state.cart.getCount();
+    }
+
+    // ---------- Filtering & Sorting (ES6 features) ----------
+    function filterAndSort(){
+      const q = state.query.trim().toLowerCase();
+      let result = state.products.filter(p => !q || p.title.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q));
+      if(state.sort === 'price-asc') result.sort((a,b)=>a.price-b.price);
+      if(state.sort === 'price-desc') result.sort((a,b)=>b.price-a.price);
+      renderProducts(result);
+    }
+
+    // ---------- Event handlers (use delegation for product grid) ----------
+    productsGrid.addEventListener('click', (ev) => {
+      const add = ev.target.closest('.add');
+      if(add){
+        const id = add.dataset.id;
+        const p = state.products.find(x=>x.id===id);
+        if(p){
+          state.cart.add(p.id, { id: p.id, title: p.title, price: p.price, img: p.img }, 1);
+          renderCart();
+          // UX: quick pulse
+          add.classList.add('pulse');
+          setTimeout(()=>add.classList.remove('pulse'), 420);
+        }
+      }
+    });
+
+    cartList.addEventListener('click', (ev) => {
+      const inc = ev.target.closest('.inc');
+      const dec = ev.target.closest('.dec');
+      if(inc || dec){
+        const id = (inc || dec).dataset.id;
+        const current = state.cart.items[id]?.qty || 0;
+        if(inc) state.cart.updateQty(id, current + 1);
+        if(dec) state.cart.updateQty(id, current - 1);
+        renderCart();
+      }
+    });
+
+    $('#clearBtn').addEventListener('click', () => { state.cart.clear(); renderCart(); });
+    $('#checkoutBtn').addEventListener('click', () => {
+      if(state.cart.getCount() === 0){ alert('Cart is empty. Add items first.'); return; }
+      // stub: realistic checkout would redirect to payment
+      alert(`Checkout stub — total ${formatPrice(state.cart.getTotal())}\n(Implement payments in backend)`);
+    });
+
+    $('#cartToggle').addEventListener('click', () => {
+      const sidebar = $('#sidebar');
+      sidebar.scrollIntoView({ behavior:'smooth', block:'start' });
+      sidebar.classList.add('pulse');
+      setTimeout(()=>sidebar.classList.remove('pulse'), 420);
+    });
+
+    $('#q').addEventListener('input', (e) => {
+      state.query = e.target.value;
+      // debounce quick (simple)
+      if(window._qto) clearTimeout(window._qto);
+      window._qto = setTimeout(filterAndSort, 140);
+    });
+
+    $('#sort').addEventListener('change', (e) => {
+      state.sort = e.target.value;
+      filterAndSort();
+    });
+
+    // ---------- Init: fetch products and render ----------
+    async function init(){
+      // fetch (mock) with async/await
+      state.products = await Api.fetchProducts();
+      // performance tip: precompute thumbnails or use low-res first (not implemented here)
+      renderProducts(state.products);
+      renderCart();
+    }
+
+    // run
+    init();
+
+    // expose for debugging (optional)
+    window.AE = { state, Cart, Api };
+
+  })();
+  </script>
+</body>
+</html>
